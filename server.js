@@ -9,6 +9,68 @@ app.use(bodyParser.json());
 var mongodbURL = 'mongodb://MongoDB-q:tZgAX0zx_rzgFcmWO86Mqse.woITmc1e.5eozkCgz7I-@ds054118.mongolab.com:54118/MongoDB-q'
 var mongoose = require('mongoose');
 
+function isAddress(field){
+	if(field == "street" || field == "building" || field == "zipcode")
+		return true;
+	return false;
+	//console.log(field);return;
+}
+
+function handleFindObj(req,res,field,value,field2,value2){
+	var findObj = {};
+	if(field == 'lon' && field2 == 'lat'){
+		if(isNaN(Number(value)) || isNaN(Number(value2))){
+			res.status(500).json({message: "lat or lon not a number"});
+			return;
+		}
+		findObj["address.coord"] = [Number(value),Number(value2)];
+		return findObj;
+	}
+
+	if(isAddress(field)){
+		findObj["address."+field] = value;
+	}else{
+		findObj[field] = value;
+	}
+
+	if(field2){
+		if(isAddress(field2)){
+		findObj["address."+field2] = value2;
+		}else{
+			findObj[field2] = value2;
+		}
+	}
+	return findObj;
+}
+
+function handlePutObj(req,res){
+	var rObj = {};
+
+	if(req.body.building)
+		rObj["address.building"] = req.body.building;
+	if(req.body.street)
+		rObj["address.street"] = req.body.street;
+	if(req.body.zipcode)
+		rObj["address.zipcode"] = req.body.zipcode;
+	if(req.body.lon&&req.body.lat){
+		rObj["address.coord"] = [];
+		if(isNaN(Number(req.params.lon)) || isNaN(Number(req.params.lat))){
+			res.status(500).json({message: "lat or lon not a number"});
+			return;
+		}
+		rObj["address.coord"] .push(Number(req.body.lon));
+		rObj["address.coord"] .push(Number(req.body.lat));
+	}
+	if(req.body.borough)
+		rObj.borough = req.body.borough;
+	if(req.body.cuisine)
+		rObj.cuisine = req.body.cuisine;
+	if(req.body.name)
+		rObj.name = req.body.name;
+
+	return rObj;
+}
+
 function getByObj(findObj,req,res){
 	var restaurantSchema = require('./models/restaurant');
 	mongoose.connect(mongodbURL);
@@ -30,6 +92,25 @@ function getByObj(findObj,req,res){
 			db.close();
 		});
 	});
+}
+
+function putByObj(findObj,putObj,req,res){
+	var restaurantSchema = require('./models/restaurant');
+	mongoose.connect(mongodbURL);
+	var db = mongoose.connection;
+	db.on('error', console.error.bind(console, 'connection error:'));
+	db.once('open', function (callback) {
+		var Restaurant = mongoose.model('Restaurant', restaurantSchema);
+		Restaurant.update(findObj,putObj,function(err){
+			if(err){
+				res.status(500).json(err);
+				throw err;
+			}else{
+				db.close();
+				res.status(200).json({message: 'update done', restaurant_id: req.params.id});
+			}
+		});
+    	});
 }
 
 app.post('/',function(req,res) {
@@ -112,12 +193,12 @@ app.get('/restaurant_id/:id', function(req,res) {
 app.get('/:field/:value', function(req,res) {
 	//console.log(req.params.field,req.params.value);return;
 	var findObj = {};
-	findObj[req.params.field] = req.params.value;
+	findObj = handleFindObj(req,res,req.params.field,req.params.value,"","");
 	//console.log(findObj);return;
 	getByObj(findObj,req,res);
 });
 
-app.get('/address/:field/:value', function(req,res) {
+/*app.get('/address/:field/:value', function(req,res) {
 	//console.log(req.params.field,req.params.value);return;
 	var findObj = {};
 	findObj["address."+req.params.field] = req.params.value;
@@ -125,23 +206,22 @@ app.get('/address/:field/:value', function(req,res) {
 	getByObj(findObj,req,res);
 });
 
-app.get('/address/coord/lot/:lot/lan/:lan', function(req,res) {
+app.get('/address/coord/lon/:lon/lat/:lat', function(req,res) {
 	//console.log(req.params.field,req.params.value);return;
 	var findObj = {};
-	if(!parseInt(req.params.lot) || !parseInt(req.params.lan)){
-		res.status(500).json({message: "Not a number"});
+	if(isNaN(Number(req.params.lon)) || isNaN(Number(req.params.lat))){
+		res.status(500).json({message: "lat or lon not a number"});
 		return;
 	}
-	findObj["address.coord"] = [parseInt(req.params.lot),parseInt(req.params.lan)];
+	findObj["address.coord"] = [Number(req.params.lon),Number(req.params.lat)];
 	//console.log(findObj);return;
 	getByObj(findObj,req,res);
-});
+});*/
 
 app.get('/:field/:value/:field2/:value2', function(req,res) {
 	//console.log(req.params.field,req.params.value);return;
 	var findObj = {};
-	findObj[req.params.field] = req.params.value;
-	findObj[req.params.field2] = req.params.value2;
+	findObj = handleFindObj(req,res,req.params.field,req.params.value,req.params.field2,req.params.value2);
 	//console.log(findObj);return;
 	getByObj(findObj,req,res);
 });
@@ -150,18 +230,123 @@ app.get('/or/:field/:value/:field2/:value2', function(req,res) {
 	//console.log(req.params.field,req.params.value);return;
 	var valueObj = [];
 	var value1 = {};
-	value1[req.params.field] = req.params.value;
+	value1 = handleFindObj(req,res,req.params.field,req.params.value,"","");
 	var value2 = {};
-	value2[req.params.field2] = req.params.value2;
+	value2 = handleFindObj(req,res,req.params.field2,req.params.value2,"","");
 	valueObj.push(value1);
 	valueObj.push(value2);
 	//console.log(valueObj);return;
 	var findObj = {$or: valueObj}
-	//console.log(findObj);return;
+	console.log(findObj);return;
 	getByObj(findObj,req,res);
 });
 
 
+
+app.put('/:field/:value',function(req,res) {
+	//console.log(req.body);
+	var rObj = {};
+	rObj = handlePutObj(req,res);
+	
+	
+	//console.log(rObj);return;
+	if(Object.keys(rObj).length>0){
+		var findObj = {};
+		findObj = handleFindObj(req,res,req.params.field,req.params.value,"","");
+		//console.log(findObj,rObj);return;
+		putByObj(findObj,rObj,req,res);
+	}else{
+		res.status(500).json({message: "Empty Data"});
+		return;
+	}
+	
+	
+});
+
+app.put('/:field/:value/:field2/:value2',function(req,res) {
+	//console.log(req.body);
+	var rObj = {};
+	rObj = handlePutObj(req,res);
+	
+	
+	//console.log(rObj);return;
+	if(Object.keys(rObj).length>0){
+		var findObj = {};
+		findObj = handleFindObj(req,res,req.params.field,req.params.value,req.params.field2,req.params.value2);
+		console.log(findObj,rObj);return;
+		putByObj(findObj,rObj,req,res);
+	}else{
+		res.status(500).json({message: "Empty Data"});
+		return;
+	}
+	
+	
+});
+
+app.put('/or/:field/:value/:field2/:value2',function(req,res) {
+	//console.log(req.body);
+	var rObj = {};
+	rObj = handlePutObj(req,res);
+	
+	
+	//console.log(rObj);return;
+	if(Object.keys(rObj).length>0){
+		var findObj = {};
+		var find1 = {};
+		find1 = handleFindObj(req,res,req.params.field,req.params.value,"","");
+		var find2 = {};
+		find2s = handleFindObj(req,res,req.params.field2,req.params.value2,"","");
+		findObj.push(find1);
+		findObj.push(find1);
+
+		//console.log(findObj,rObj);return;
+		putByObj(findObj,rObj,req,res);
+	}else{
+		res.status(500).json({message: "Empty Data"});
+		return;
+	}
+	
+	
+});
+
+app.put('/:field/:value/address',function(req,res) {
+	var rObj = {};
+	if(req.body.building||req.body.street||req.body.zipcode||req.body.lon||req.body.lat)
+		rObj.address = {};
+	if(req.body.building)
+		rObj.address.building = req.body.building;
+	else
+		rObj.address.building = "";
+	if(req.body.street)
+		rObj.address.street = req.body.street;
+	else
+		rObj.address.street = "";
+	if(req.body.zipcode)
+		rObj.address.zipcode = req.body.zipcode;
+	else
+		rObj.address.zipcode = "";
+	rObj.address.coord = [];
+	if(req.body.lon&&req.body.lat){
+		if(isNaN(Number(req.body.lon)) || isNaN(Number(req.body.lat))){
+			res.status(500).json({message: "lat or lon not a number"});
+			return;
+		}
+		rObj.address.coord.push(Number(req.body.lon));
+		rObj.address.coord.push(Number(req.body.lat));
+	}
+	
+	//console.log(rObj);return;
+	if(Object.keys(rObj).length>0){
+		var findObj = {};
+		findObj[req.params.field] = req.params.value;
+		putByObj(findObj,rObj,req,res);
+	}else{
+		res.status(500).json({message: "Empty Data"});
+		return;
+	}
+	
+	
+});
 
 app.put('/restaurant_id/:id/grade', function(req,res){
 	var gradeObj = {};
@@ -175,24 +360,6 @@ app.put('/restaurant_id/:id/grade', function(req,res){
 	db.on('error', console.error.bind(console, 'connection error:'));
 	db.once('open', function (callback) {
 		var Restaurant = mongoose.model('Restaurant', restaurantSchema);
-		/*Restaurant.findOne({restaurant_id: req.params.id},function(err,result){
-			if(err){
-				res.status(500).json(err);
-				throw err;
-			}
-			
-			result.grades.push(gradeObj);
-			//console.log(result);
-			result.save(function(err) {
-				if(err){
-					res.status(500).json(err);
-					throw err;
-				}
-				res.status(200).json({message: 'update done'});
-				db.close();
-			});
-			
-		});*/
 		Restaurant.update({restaurant_id:req.params.id},{$push:{"grades":gradeObj}},function(err){
 			if(err){
 				res.status(500).json(err);
