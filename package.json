@@ -1,7 +1,7 @@
 {
     "name": "server",
-    "description": "COMPS381F Project Assignment - Sample Source Code",
-    "author": "Raymond SO <rso@ouhk.edu.hk>",
+    "description": "COMPS381F Project Assignment",
+    "author": "Howard Tam <howardthk@gmail.com>",
     "version": "0.0.1",
     "dependencies": {
 		"body-parser": "*",
