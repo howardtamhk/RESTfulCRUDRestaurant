@@ -8,6 +8,29 @@ app.use(bodyParser.json());
 var mongodbURL = 'mongodb://localhost:27017/test';
 var mongoose = require('mongoose');
 
+function getByObj(findObj,req,res){
+	var restaurantSchema = require('./models/restaurant');
+	mongoose.connect('mongodb://localhost/test');
+	var db = mongoose.connection;
+	db.on('error', console.error.bind(console, 'connection error:'));
+	db.once('open', function (callback) {
+		var Restaurant = mongoose.model('Restaurant', restaurantSchema);
+		Restaurant.find(findObj,function(err,results){
+	       		if (err) {
+				res.status(500).json(err);
+				throw err
+			}
+			if (results.length > 0) {
+				res.status(200).json(results);
+			}
+			else {
+				res.status(200).json({message: 'No matching document', restaurant_id: req.params.id});
+			}
+			db.close();
+		});
+	});
+}
+
 app.post('/',function(req,res) {
 	//console.log(req.body);
 	var restaurantSchema = require('./models/restaurant');
@@ -84,6 +107,60 @@ app.get('/restaurant_id/:id', function(req,res) {
     	});
     });
 });
+
+app.get('/:field/:value', function(req,res) {
+	//console.log(req.params.field,req.params.value);return;
+	var findObj = {};
+	findObj[req.params.field] = req.params.value;
+	//console.log(findObj);return;
+	getByObj(findObj,req,res);
+});
+
+app.get('/address/:field/:value', function(req,res) {
+	//console.log(req.params.field,req.params.value);return;
+	var findObj = {};
+	findObj["address."+req.params.field] = req.params.value;
+	//console.log(findObj);return;
+	getByObj(findObj,req,res);
+});
+
+app.get('/address/coord/lot/:lot/lan/:lan', function(req,res) {
+	//console.log(req.params.field,req.params.value);return;
+	var findObj = {};
+	if(!parseInt(req.params.lot) || !parseInt(req.params.lan)){
+		res.status(500).json({message: "Not a number"});
+		return;
+	}
+	findObj["address.coord"] = [parseInt(req.params.lot),parseInt(req.params.lan)];
+	//console.log(findObj);return;
+	getByObj(findObj,req,res);
+});
+
+app.get('/:field/:value/:field2/:value2', function(req,res) {
+	//console.log(req.params.field,req.params.value);return;
+	var findObj = {};
+	findObj[req.params.field] = req.params.value;
+	findObj[req.params.field2] = req.params.value2;
+	//console.log(findObj);return;
+	getByObj(findObj,req,res);
+});
+
+app.get('/or/:field/:value/:field2/:value2', function(req,res) {
+	//console.log(req.params.field,req.params.value);return;
+	var valueObj = [];
+	var value1 = {};
+	value1[req.params.field] = req.params.value;
+	var value2 = {};
+	value2[req.params.field2] = req.params.value2;
+	valueObj.push(value1);
+	valueObj.push(value2);
+	//console.log(valueObj);return;
+	var findObj = {$or: valueObj}
+	//console.log(findObj);return;
+	getByObj(findObj,req,res);
+});
+
+
 
 app.put('/restaurant_id/:id/grade', function(req,res){
 	var gradeObj = {};
