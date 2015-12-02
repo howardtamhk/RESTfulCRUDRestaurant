@@ -30,15 +30,15 @@ app.post('/',function(req,res) {
 
 		var Restaurant = mongoose.model('Restaurant', restaurantSchema);
 		var r = new Restaurant(rObj);
-		//console.log(r);
+		//console.log(r);return;
 		r.save(function(err) {
        		if (err) {
-				res.status(500).json(err);
-				throw err
-			}
+			res.status(500).json(err);
+			throw err
+		}
        		//console.log('Restaurant created!')
        		db.close();
-			res.status(200).json({message: 'insert done', id: r._id});
+		res.status(200).json({message: 'insert done', _id: r._id});
     	});
     });
 });
@@ -52,12 +52,12 @@ app.delete('/restaurant_id/:id',function(req,res) {
 		var Restaurant = mongoose.model('Restaurant', restaurantSchema);
 		Restaurant.find({restaurant_id: req.params.id}).remove(function(err) {
        		if (err) {
-				res.status(500).json(err);
-				throw err
-			}
+			res.status(500).json(err);
+			throw err
+		}
        		//console.log('Restaurant removed!')
        		db.close();
-			res.status(200).json({message: 'delete done', id: req.params.id});
+		res.status(200).json({message: 'delete done', restaurant_id: req.params.id});
     	});
     });
 });
@@ -71,18 +71,60 @@ app.get('/restaurant_id/:id', function(req,res) {
 		var Restaurant = mongoose.model('Restaurant', restaurantSchema);
 		Restaurant.find({restaurant_id: req.params.id},function(err,results){
        		if (err) {
-				res.status(500).json(err);
-				throw err
-			}
-			if (results.length > 0) {
-				res.status(200).json(results);
-			}
-			else {
-				res.status(200).json({message: 'No matching document'});
-			}
-			db.close();
+			res.status(500).json(err);
+			throw err
+		}
+		if (results.length > 0) {
+			res.status(200).json(results);
+		}
+		else {
+			res.status(200).json({message: 'No matching document', restaurant_id: req.params.id});
+		}
+		db.close();
     	});
     });
+});
+
+app.put('/restaurant_id/:id/grade', function(req,res){
+	var gradeObj = {};
+	gradeObj.date = req.body.date;
+	gradeObj.grade = req.body.grade;
+	gradeObj.score = req.body.score;
+	//console.log(gradeObj);return;
+	var restaurantSchema = require('./models/restaurant');
+	mongoose.connect('mongodb://localhost/test');
+	var db = mongoose.connection;
+	db.on('error', console.error.bind(console, 'connection error:'));
+	db.once('open', function (callback) {
+		var Restaurant = mongoose.model('Restaurant', restaurantSchema);
+		/*Restaurant.findOne({restaurant_id: req.params.id},function(err,result){
+			if(err){
+				res.status(500).json(err);
+				throw err;
+			}
+			
+			result.grades.push(gradeObj);
+			//console.log(result);
+			result.save(function(err) {
+				if(err){
+					res.status(500).json(err);
+					throw err;
+				}
+				res.status(200).json({message: 'update done'});
+				db.close();
+			});
+			
+		});*/
+		Restaurant.update({restaurant_id:req.params.id},{$push:{"grades":gradeObj}},function(err){
+			if(err){
+				res.status(500).json(err);
+				throw err;
+			}else{
+				db.close();
+				res.status(200).json({message: 'update done'});
+			}
+		});
+	});
 });
 
 app.listen(process.env.PORT || 8099);
