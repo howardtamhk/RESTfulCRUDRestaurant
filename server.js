@@ -1,5 +1,3 @@
-
-
 var express = require('express');
 var app = express();
 var bodyParser = require('body-parser');
@@ -115,6 +113,25 @@ function putByObj(findObj,putObj,req,res){
     	});
 }
 
+function delByObj(findObj,req,res){
+	var restaurantSchema = require('./models/restaurant');
+	mongoose.connect(mongodbURL);
+	var db = mongoose.connection;
+	db.on('error', console.error.bind(console, 'connection error:'));
+	db.once('open', function (callback) {
+		var Restaurant = mongoose.model('Restaurant', restaurantSchema);
+		Restaurant.find(findObj).remove(function(err) {
+       		if (err) {
+			res.status(500).json(err);
+			throw err
+		}
+       		//console.log('Restaurant removed!')
+       		db.close();
+		res.status(200).json({message: 'delete done', restaurant_id: req.params.id});
+    	});
+    });
+}
+
 app.post('/',function(req,res) {
 	//console.log(req.body);
 	var restaurantSchema = require('./models/restaurant');
@@ -167,6 +184,35 @@ app.delete('/restaurant_id/:id',function(req,res) {
 		res.status(200).json({message: 'delete done', restaurant_id: req.params.id});
     	});
     });
+});
+
+app.delete('/:field/:value', function(req,res) {
+	var findObj = {};
+	findObj = handleFindObj(req,res,req.params.field,req.params.value,"","");	
+	delByObj(findObj,req,res)	
+}
+
+app.delete('/:field/:value/:field2/:value2', function(req,res) {	
+	var findObj = {};
+	findObj = handleFindObj(req,res,req.params.field,req.params.value,req.params.field2,req.params.value2);
+	
+	console.log(findObj);return;
+	delByObj(findObj,req,res)	
+});
+
+app.delete('/or/:field/:value/:field2/:value2', function(req,res) {	
+	var valueObj = [];
+	var value1 = {};
+	value1 = handleFindObj(req,res,req.params.field,req.params.value,"","");
+	var value2 = {};
+	value2 = handleFindObj(req,res,req.params.field2,req.params.value2,"","");
+	
+	valueObj.push(value1);
+	valueObj.push(value2);	
+	var findObj = {$or: valueObj}
+	
+	console.log(findObj);return;
+	delByObj(findObj,req,res)	
 });
 
 app.get('/restaurant_id/:id', function(req,res) {
