@@ -122,12 +122,12 @@ function delByObj(findObj,req,res){
 		var Restaurant = mongoose.model('Restaurant', restaurantSchema);
 		Restaurant.find(findObj).remove(function(err) {
        		if (err) {
-			res.status(500).json(err);
-			throw err
-		}
+				res.status(500).json(err);
+				throw err
+			}
        		//console.log('Restaurant removed!')
        		db.close();
-		res.status(200).json({message: 'delete done', restaurant_id: req.params.id});
+			res.status(200).json({message: 'delete done', restaurant_id: req.params.id});
     	});
     });
 }
@@ -190,7 +190,7 @@ app.delete('/:field/:value', function(req,res) {
 	var findObj = {};
 	findObj = handleFindObj(req,res,req.params.field,req.params.value,"","");	
 	delByObj(findObj,req,res)	
-}
+});
 
 app.delete('/:field/:value/:field2/:value2', function(req,res) {	
 	var findObj = {};
