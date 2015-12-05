@@ -16,6 +16,12 @@ function isAddress(field){
 	//console.log(field);return;
 }
 
+function isGrades(field){
+	if(field == "date" || field == "grade" || field == "score")
+		return true;
+	return false;
+}
+
 function handleFindObj(req,res,field,value,field2,value2){
 	var findObj = {};
 	if(field == 'lon' && field2 == 'lat'){
@@ -27,15 +33,38 @@ function handleFindObj(req,res,field,value,field2,value2){
 		return findObj;
 	}
 
+	if(isGrades(field) && isGrades(field2)){
+		var findObj = {};
+		var valueObj = {};
+		//var text = '{'+field+':'+value+','+field2+':'+value2+'}';
+		//console.log(text);return;
+		//var valueObj = JSON.parse(value);
+		valueObj[field] = value;
+		valueObj[field2] = value2;
+		//console.log(valueObj);return;
+				
+		var gradesObj = {"$elemMatch" : valueObj};
+		findObj['grades'] = gradesObj;
+		return findObj;
+	}
+
 	if(isAddress(field)){
 		findObj["address."+field] = value;
+	}else if (isGrades(field)){
+		var valueObj = {};
+		valueObj[field] = value;
+		findObj["grades"] = {"$elemMatch":valueObj};
 	}else{
 		findObj[field] = value;
 	}
 
 	if(field2){
 		if(isAddress(field2)){
-		findObj["address."+field2] = value2;
+			findObj["address."+field2] = value2;
+		}else if (isGrades(field2)){
+			var valueObj = {};
+			valueObj[field2] = value2;
+			findObj["grades"] = {"$elemMatch":valueObj};
 		}else{
 			findObj[field2] = value2;
 		}
@@ -141,15 +170,33 @@ app.post('/',function(req,res) {
 	db.once('open', function (callback) {
 		var rObj = {};
 		rObj.address = {};
+		if(!req.body.building) 
+			req.body.building = "";
 		rObj.address.building = req.body.building;
+		if(!req.body.street) 
+			req.body.street = "";
 		rObj.address.street = req.body.street;
+		if(!req.body.zipcode) 
+			req.body.zipcode = "";
 		rObj.address.zipcode = req.body.zipcode;
 		rObj.address.coord = [];
+		if(!req.body.lon) 
+			req.body.lon = "";
+		if(!req.body.lat) 
+			req.body.lat = "";
 		rObj.address.coord.push(req.body.lon);
 		rObj.address.coord.push(req.body.lat);
+		if(!req.body.borough) 
+			req.body.borough = "";
 		rObj.borough = req.body.borough;
+		if(!req.body.cuisine) 
+			req.body.cuisine = "";
 		rObj.cuisine = req.body.cuisine;
+		if(!req.body.name) 
+			req.body.name = "";
 		rObj.name = req.body.name;
+		if(!req.body.restaurant_id) 
+			req.body.restaurant_id = "";
 		rObj.restaurant_id = req.body.restaurant_id;
 
 		var Restaurant = mongoose.model('Restaurant', restaurantSchema);
@@ -246,25 +293,6 @@ app.get('/:field/:value', function(req,res) {
 	getByObj(findObj,req,res);
 });
 
-/*app.get('/address/:field/:value', function(req,res) {
-	//console.log(req.params.field,req.params.value);return;
-	var findObj = {};
-	findObj["address."+req.params.field] = req.params.value;
-	//console.log(findObj);return;
-	getByObj(findObj,req,res);
-});
-
-app.get('/address/coord/lon/:lon/lat/:lat', function(req,res) {
-	//console.log(req.params.field,req.params.value);return;
-	var findObj = {};
-	if(isNaN(Number(req.params.lon)) || isNaN(Number(req.params.lat))){
-		res.status(500).json({message: "lat or lon not a number"});
-		return;
-	}
-	findObj["address.coord"] = [Number(req.params.lon),Number(req.params.lat)];
-	//console.log(findObj);return;
-	getByObj(findObj,req,res);
-});*/
 
 app.get('/:field/:value/:field2/:value2', function(req,res) {
 	//console.log(req.params.field,req.params.value);return;
@@ -279,13 +307,14 @@ app.get('/or/:field/:value/:field2/:value2', function(req,res) {
 	var valueObj = [];
 	var value1 = {};
 	value1 = handleFindObj(req,res,req.params.field,req.params.value,"","");
+	//console.log(value1);return;
 	var value2 = {};
 	value2 = handleFindObj(req,res,req.params.field2,req.params.value2,"","");
 	valueObj.push(value1);
 	valueObj.push(value2);
 	//console.log(valueObj);return;
 	var findObj = {$or: valueObj}
-	console.log(findObj);return;
+	//console.log(findObj);return;
 	getByObj(findObj,req,res);
 });
 
