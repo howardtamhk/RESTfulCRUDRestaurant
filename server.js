@@ -196,7 +196,7 @@ app.delete('/:field/:value/:field2/:value2', function(req,res) {
 	var findObj = {};
 	findObj = handleFindObj(req,res,req.params.field,req.params.value,req.params.field2,req.params.value2);
 	
-	console.log(findObj);return;
+	//console.log(findObj);return;
 	delByObj(findObj,req,res)	
 });
 
@@ -211,7 +211,7 @@ app.delete('/or/:field/:value/:field2/:value2', function(req,res) {
 	valueObj.push(value2);	
 	var findObj = {$or: valueObj}
 	
-	console.log(findObj);return;
+	//console.log(findObj);return;
 	delByObj(findObj,req,res)	
 });
 
