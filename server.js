@@ -233,6 +233,57 @@ app.delete('/restaurant_id/:id',function(req,res) {
     });
 });
 
+app.delete('/grades/restaurant_id/:id/date/:date/grade/:grade/score/:score', function(req,res) {
+	var gradeObj = {};
+	gradeObj.date = req.params.date;
+	gradeObj.grade = req.params.grade;
+	gradeObj.score = req.params.score;
+	//console.log(gradeObj);return;
+
+	var findObj = {};
+	var valueObj = {};
+	//var text = '{'+field+':'+value+','+field2+':'+value2+'}';
+	//console.log(text);return;
+	//var valueObj = JSON.parse(value);
+	valueObj['date'] = req.params.date;
+	valueObj['grade'] = req.params.grade;
+	valueObj['score'] = req.params.score;
+	//console.log(valueObj);return;
+			
+	var gradesObj = {"$elemMatch" : valueObj};
+	findObj['grades'] = gradesObj;
+
+	//console.log(findObj);return;
+
+	var restaurantSchema = require('./models/restaurant');
+	mongoose.connect(mongodbURL);
+	var db = mongoose.connection;
+	db.on('error', console.error.bind(console, 'connection error:'));
+	db.once('open', function (callback) {
+		var Restaurant = mongoose.model('Restaurant', restaurantSchema);
+		
+		/*Restaurant.find(findObj,function(err){
+			if (err) {
+				console.log('not find');
+				res.status(500).json(err);
+				throw err;
+			}else{
+				console.log('find')
+			}
+		});*/
+		//return;
+		Restaurant.update({restaurant_id:req.params.id},{$pull:{"grades":[gradeObj]}},function(err){
+			if(err){
+				res.status(500).json(err);
+				throw err;
+			}else{
+				db.close();
+				res.status(200).json({message: 'Remove done'});
+			}
+		});
+	});
+});
+
 app.delete('/:field/:value', function(req,res) {
 	var findObj = {};
 	findObj = handleFindObj(req,res,req.params.field,req.params.value,"","");	
@@ -306,9 +357,31 @@ app.get('/lt/score/:value/', function(req,res) {
 	//console.log(valueObj);return;
 	var ltobj = {}
 	ltObj = {$lt: req.params.value};
-	var findObj = {'grades.score':ltObj};
-	//console.log(findObj);return;
-	getByObj(findObj,req,res);
+	var aggObj = { $group: { _id: "$restaurant_id", avg_score: { $avg: "$grades.score" } } };
+	console.log(aggObj);return;
+	var matchObj = {};
+	matchObj = {$match:{}};
+
+	var restaurantSchema = require('./models/restaurant');
+	mongoose.connect(mongodbURL);
+	var db = mongoose.connection;
+	db.on('error', console.error.bind(console, 'connection error:'));
+	db.once('open', function (callback) {
+		var Restaurant = mongoose.model('Restaurant', restaurantSchema);
+		Restaurant.aggregate(aggObj,function(err,results){
+	       		if (err) {
+				res.status(500).json(err);
+				throw err
+			}
+			if (results.length > 0) {
+				res.status(200).json(results);
+			}
+			else {
+				res.status(200).json({message: 'No matching document', restaurant_id: req.params.id});
+			}
+			db.close();
+		});
+	});
 });
 
 app.get('/or/:field/:value/:field2/:value2', function(req,res) {
