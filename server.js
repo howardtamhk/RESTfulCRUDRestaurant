@@ -302,6 +302,15 @@ app.get('/:field/:value/:field2/:value2', function(req,res) {
 	getByObj(findObj,req,res);
 });
 
+app.get('/lt/score/:value/', function(req,res) {
+	//console.log(valueObj);return;
+	var ltobj = {}
+	ltObj = {$lt: req.params.value};
+	var findObj = {'grades.score':ltObj};
+	//console.log(findObj);return;
+	getByObj(findObj,req,res);
+});
+
 app.get('/or/:field/:value/:field2/:value2', function(req,res) {
 	//console.log(req.params.field,req.params.value);return;
 	var valueObj = [];
